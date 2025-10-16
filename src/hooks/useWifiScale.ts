@@ -55,11 +55,7 @@ export const useWifiScale = (): WifiScaleHook => {
     } catch (error: any) {
       console.error("Wi-Fi connection error:", error);
       setState("disconnected");
-      toast({
-        title: "Wi-Fi connection failed",
-        description: error.message || "Could not connect to scale",
-        variant: "destructive",
-      });
+      throw error; // Re-throw to let the calling component handle it
     }
   }, [toast]);
 

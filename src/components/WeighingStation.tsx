@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ConnectionStatus, ConnectionType, ConnectionState } from "./ConnectionStatus";
 import { WeightDisplay } from "./WeightDisplay";
+import { WifiConfigDialog } from "./WifiConfigDialog";
 import { LogOut, Save, Wifi } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useBluetoothScale } from "@/hooks/useBluetoothScale";
@@ -25,6 +26,7 @@ export const WeighingStation = ({ operatorName, machineName, onEndShift }: Weigh
   const [activeConnection, setActiveConnection] = useState<ConnectionType>("bluetooth");
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [queuedRecords, setQueuedRecords] = useState<WeightRecord[]>([]);
+  const [showWifiConfig, setShowWifiConfig] = useState(false);
   const { toast } = useToast();
   
   const bluetooth = useBluetoothScale();
@@ -102,36 +104,53 @@ export const WeighingStation = ({ operatorName, machineName, onEndShift }: Weigh
   };
 
   const handleConnectionSwitch = async (type: ConnectionType) => {
-    setActiveConnection(type);
-    
     if (type === "bluetooth") {
+      setActiveConnection(type);
       try {
         await bluetooth.connect();
-      } catch (error) {
+      } catch (error: any) {
+        // Only auto-switch if error is not user cancellation
+        if (error?.message?.includes("cancelled") || error?.message?.includes("canceled")) {
+          return; // User cancelled, don't switch to Wi-Fi
+        }
+        
         toast({
-          title: "Bluetooth connection failed",
-          description: "Switching to Wi-Fi mode",
-          variant: "destructive",
+          title: "Bluetooth unavailable",
+          description: "Please configure Wi-Fi connection",
+          variant: "default",
         });
         setActiveConnection("wifi");
-        
-        // Auto-connect to Wi-Fi with default local IP
-        // You can prompt user for IP or store it in settings
-        const defaultIp = "192.168.1.100"; // Replace with your scale's default IP
-        await wifi.connect(defaultIp);
+        setShowWifiConfig(true);
       }
     } else {
-      // Disconnect Bluetooth if active
+      // For Wi-Fi, show configuration dialog
       bluetooth.disconnect();
-      
-      // Prompt for IP or use stored value
-      const defaultIp = "192.168.1.100"; // Replace with your scale's IP
-      await wifi.connect(defaultIp);
+      setActiveConnection("wifi");
+      setShowWifiConfig(true);
+    }
+  };
+
+  const handleWifiConnect = async (ipAddress: string) => {
+    try {
+      await wifi.connect(ipAddress);
+    } catch (error: any) {
+      toast({
+        title: "Wi-Fi connection failed",
+        description: "Please check the IP address and try again",
+        variant: "destructive",
+      });
     }
   };
 
   return (
-    <div className="min-h-screen bg-background p-6">
+    <>
+      <WifiConfigDialog
+        open={showWifiConfig}
+        onOpenChange={setShowWifiConfig}
+        onConnect={handleWifiConnect}
+      />
+      
+      <div className="min-h-screen bg-background p-6">
       {/* Header */}
       <div className="max-w-4xl mx-auto mb-6">
         <div className="bg-card rounded-xl p-6 shadow-lg border border-border">
@@ -206,5 +225,6 @@ export const WeighingStation = ({ operatorName, machineName, onEndShift }: Weigh
         </Button>
       </div>
     </div>
+    </>
   );
 };
