@@ -5,6 +5,8 @@ import { ConnectionStatus, ConnectionType, ConnectionState } from "./ConnectionS
 import { WeightDisplay } from "./WeightDisplay";
 import { LogOut, Save, Wifi } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useBluetoothScale } from "@/hooks/useBluetoothScale";
+import { useWifiScale } from "@/hooks/useWifiScale";
 
 interface WeighingStationProps {
   operatorName: string;
@@ -20,13 +22,17 @@ interface WeightRecord {
 }
 
 export const WeighingStation = ({ operatorName, machineName, onEndShift }: WeighingStationProps) => {
-  const [currentWeight, setCurrentWeight] = useState(0);
   const [activeConnection, setActiveConnection] = useState<ConnectionType>("bluetooth");
-  const [bluetoothState, setBluetoothState] = useState<ConnectionState>("disconnected");
-  const [wifiState, setWifiState] = useState<ConnectionState>("connected");
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [queuedRecords, setQueuedRecords] = useState<WeightRecord[]>([]);
   const { toast } = useToast();
+  
+  const bluetooth = useBluetoothScale();
+  const wifi = useWifiScale();
+  
+  const currentWeight = activeConnection === "bluetooth" ? bluetooth.weight : wifi.weight;
+  const bluetoothState = bluetooth.state;
+  const wifiState = wifi.state;
 
   // Monitor online/offline status
   useEffect(() => {
@@ -42,16 +48,7 @@ export const WeighingStation = ({ operatorName, machineName, onEndShift }: Weigh
     };
   }, []);
 
-  // Simulate weight changes (in production, this would read from the scale)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (bluetoothState === "connected" || wifiState === "connected") {
-        setCurrentWeight(Math.random() * 100 + 50);
-      }
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [bluetoothState, wifiState]);
+  // Weight is now handled by the hooks
 
   // Auto-sync queued records when online
   useEffect(() => {
@@ -104,24 +101,32 @@ export const WeighingStation = ({ operatorName, machineName, onEndShift }: Weigh
     }
   };
 
-  const handleConnectionSwitch = (type: ConnectionType) => {
+  const handleConnectionSwitch = async (type: ConnectionType) => {
     setActiveConnection(type);
     
     if (type === "bluetooth") {
-      setBluetoothState("connecting");
-      setTimeout(() => {
-        // Simulate connection attempt
-        const success = Math.random() > 0.3;
-        setBluetoothState(success ? "connected" : "disconnected");
-        if (!success) {
-          toast({
-            title: "Bluetooth connection failed",
-            description: "Switching to Wi-Fi mode",
-            variant: "destructive",
-          });
-          setActiveConnection("wifi");
-        }
-      }, 1500);
+      try {
+        await bluetooth.connect();
+      } catch (error) {
+        toast({
+          title: "Bluetooth connection failed",
+          description: "Switching to Wi-Fi mode",
+          variant: "destructive",
+        });
+        setActiveConnection("wifi");
+        
+        // Auto-connect to Wi-Fi with default local IP
+        // You can prompt user for IP or store it in settings
+        const defaultIp = "192.168.1.100"; // Replace with your scale's default IP
+        await wifi.connect(defaultIp);
+      }
+    } else {
+      // Disconnect Bluetooth if active
+      bluetooth.disconnect();
+      
+      // Prompt for IP or use stored value
+      const defaultIp = "192.168.1.100"; // Replace with your scale's IP
+      await wifi.connect(defaultIp);
     }
   };
 
