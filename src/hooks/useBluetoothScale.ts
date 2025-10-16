@@ -1,6 +1,7 @@
-/// <reference path="../types/bluetooth.d.ts" />
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { BluetoothFactory } from "@/lib/bluetooth/BluetoothFactory";
+import { BluetoothAdapter, BluetoothDeviceInfo } from "@/lib/bluetooth/BluetoothAdapter";
 
 interface BluetoothScaleHook {
   weight: number;
@@ -12,53 +13,53 @@ interface BluetoothScaleHook {
 export const useBluetoothScale = (): BluetoothScaleHook => {
   const [weight, setWeight] = useState(0);
   const [state, setState] = useState<"connected" | "connecting" | "disconnected">("disconnected");
-  const [device, setDevice] = useState<BluetoothDevice | null>(null);
-  const [characteristic, setCharacteristic] = useState<BluetoothRemoteGATTCharacteristic | null>(null);
+  const adapterRef = useRef<BluetoothAdapter | null>(null);
+  const deviceInfoRef = useRef<BluetoothDeviceInfo | null>(null);
   const { toast } = useToast();
 
   const connect = useCallback(async () => {
     try {
       setState("connecting");
 
-      // Request Bluetooth device
-      const device = await navigator.bluetooth.requestDevice({
-        acceptAllDevices: true,
-        optionalServices: ['battery_service', 'device_information']
-      });
+      // Create the appropriate adapter (Web or Capacitor)
+      if (!adapterRef.current) {
+        adapterRef.current = BluetoothFactory.createAdapter();
+      }
 
-      const server = await device.gatt?.connect();
-      if (!server) throw new Error("Failed to connect to GATT server");
+      const adapter = adapterRef.current;
 
-      setDevice(device);
+      // Check if Bluetooth is available
+      const isAvailable = await adapter.isAvailable();
+      if (!isAvailable) {
+        throw new Error("Bluetooth is not available on this device");
+      }
+
+      // Request device
+      const deviceInfo = await adapter.requestDevice();
+      deviceInfoRef.current = deviceInfo;
+
+      // Connect to device
+      await adapter.connect(deviceInfo);
+
       setState("connected");
 
       toast({
         title: "Bluetooth connected",
-        description: `Connected to ${device.name || "scale device"}`,
+        description: `Connected to ${deviceInfo.name || "scale device"}`,
       });
 
-      // Try to get weight characteristic (this depends on your scale's service UUID)
-      // Most scales use custom UUIDs - you'll need to replace these with your scale's actual UUIDs
+      // Subscribe to weight updates
       try {
-        const service = await server.getPrimaryService("00001234-0000-1000-8000-00805f9b34fb");
-        const char = await service.getCharacteristic("00005678-0000-1000-8000-00805f9b34fb");
-        
-        setCharacteristic(char);
-        
-        // Start notifications for weight updates
-        await char.startNotifications();
-        char.addEventListener('characteristicvaluechanged', (event: Event) => {
-          const target = event.target as BluetoothRemoteGATTCharacteristic;
-          const value = target.value;
-          if (value) {
-            // Parse weight data (format depends on your scale)
-            const weightValue = value.getFloat32(0, true);
-            setWeight(weightValue);
-          }
+        await adapter.subscribeToWeight((newWeight) => {
+          setWeight(newWeight);
         });
       } catch (e) {
-        console.warn("Could not subscribe to weight characteristic:", e);
-        // Fallback: poll for weight periodically if notifications aren't available
+        console.warn("Could not subscribe to weight notifications:", e);
+        toast({
+          title: "Warning",
+          description: "Connected but weight notifications not available",
+          variant: "default",
+        });
       }
 
     } catch (error: any) {
@@ -73,17 +74,14 @@ export const useBluetoothScale = (): BluetoothScaleHook => {
   }, [toast]);
 
   const disconnect = useCallback(() => {
-    if (characteristic) {
-      characteristic.stopNotifications();
+    if (adapterRef.current) {
+      adapterRef.current.disconnect();
+      adapterRef.current = null;
     }
-    if (device?.gatt?.connected) {
-      device.gatt.disconnect();
-    }
-    setDevice(null);
-    setCharacteristic(null);
+    deviceInfoRef.current = null;
     setState("disconnected");
     setWeight(0);
-  }, [device, characteristic]);
+  }, []);
 
   // Clean up on unmount
   useEffect(() => {
