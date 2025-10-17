@@ -60,20 +60,40 @@ export const WeighingStation = ({ operatorName, machineName, onEndShift }: Weigh
   }, [isOnline, queuedRecords]);
 
   const syncQueuedRecords = async () => {
-    // In production, this would upload to Google Sheets
     toast({
       title: "Syncing data",
       description: `Uploading ${queuedRecords.length} queued records...`,
     });
 
-    // Simulate upload
-    setTimeout(() => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/record-weight`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ records: queuedRecords })
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to sync records');
+      }
+
       setQueuedRecords([]);
       toast({
         title: "Sync complete",
         description: "All queued records uploaded successfully",
       });
-    }, 1000);
+    } catch (error) {
+      console.error('Sync error:', error);
+      toast({
+        title: "Sync failed",
+        description: "Failed to upload records. Will retry later.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleRecordWeight = async () => {
@@ -85,12 +105,38 @@ export const WeighingStation = ({ operatorName, machineName, onEndShift }: Weigh
     };
 
     if (isOnline) {
-      // In production, upload to Google Sheets immediately
-      toast({
-        title: "Weight recorded",
-        description: `${currentWeight.toFixed(2)} kg saved successfully`,
-        duration: 2000,
-      });
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/record-weight`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ records: [record] })
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error('Failed to record weight');
+        }
+
+        toast({
+          title: "Weight recorded",
+          description: `${currentWeight.toFixed(2)} kg saved successfully`,
+          duration: 2000,
+        });
+      } catch (error) {
+        console.error('Record error:', error);
+        // Queue for later if upload fails
+        setQueuedRecords((prev) => [...prev, record]);
+        toast({
+          title: "Weight queued",
+          description: `Network error. Saved offline for later sync.`,
+          variant: "default",
+          duration: 2000,
+        });
+      }
     } else {
       // Queue for later upload
       setQueuedRecords((prev) => [...prev, record]);

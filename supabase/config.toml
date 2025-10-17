@@ -1,1 +1,4 @@
 project_id = "rnejpqzgyoyqaumwjmar"
+
+[functions.record-weight]
+verify_jwt = false
