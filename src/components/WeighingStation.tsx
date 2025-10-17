@@ -36,6 +36,45 @@ export const WeighingStation = ({ operatorName, machineName, onEndShift }: Weigh
   const bluetoothState = bluetooth.state;
   const wifiState = wifi.state;
 
+  // Log shift start when component mounts
+  useEffect(() => {
+    logShiftEvent('start');
+  }, []);
+
+  const logShiftEvent = async (action: 'start' | 'end') => {
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/log-shift`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            timestamp: new Date().toISOString(),
+            machineName,
+            operatorName,
+            action
+          })
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to log shift event');
+      }
+
+      console.log(`Shift ${action} logged successfully`);
+    } catch (error) {
+      console.error('Shift log error:', error);
+      // Don't show error toast for shift logging to avoid disrupting user
+    }
+  };
+
+  const handleEndShift = async () => {
+    await logShiftEvent('end');
+    onEndShift();
+  };
+
   // Monitor online/offline status
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -223,7 +262,7 @@ export const WeighingStation = ({ operatorName, machineName, onEndShift }: Weigh
               <Button
                 variant="outline"
                 size="lg"
-                onClick={onEndShift}
+                onClick={handleEndShift}
                 className="gap-2"
               >
                 <LogOut className="w-5 h-5" />
