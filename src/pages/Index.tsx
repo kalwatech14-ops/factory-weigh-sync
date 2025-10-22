@@ -8,6 +8,7 @@ const Index = () => {
   const machineName = "SCALE 1"; // This could be configured per tablet
 
   const handleStartShift = (name: string, product: string) => {
+    localStorage.setItem("operatorName", name);
     setOperatorName(name);
     setProductType(product);
   };

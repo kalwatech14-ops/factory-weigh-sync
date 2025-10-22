@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,13 @@ interface OperatorLoginProps {
 export const OperatorLogin = ({ onStartShift }: OperatorLoginProps) => {
   const [name, setName] = useState("");
   const [productType, setProductType] = useState("");
+
+  useEffect(() => {
+    const savedOperatorName = localStorage.getItem("operatorName");
+    if (savedOperatorName) {
+      setName(savedOperatorName);
+    }
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
