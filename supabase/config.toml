@@ -2,3 +2,6 @@ project_id = "rnejpqzgyoyqaumwjmar"
 
 [functions.record-weight]
 verify_jwt = false
+
+[functions.log-shift]
+verify_jwt = false
