@@ -9,6 +9,7 @@ interface WeightRecord {
   timestamp: string;
   machineName: string;
   operatorName: string;
+  productType: string;
   weight: number;
 }
 
@@ -45,11 +46,12 @@ serve(async (req) => {
       new Date(record.timestamp).toLocaleString(),
       record.machineName,
       record.operatorName,
+      record.productType,
       record.weight.toFixed(2)
     ]);
 
     // Append to Google Sheets
-    const appendUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Sheet1!A:D:append?valueInputOption=RAW`;
+    const appendUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Sheet1!A:E:append?valueInputOption=RAW`;
     
     const response = await fetch(appendUrl, {
       method: 'POST',

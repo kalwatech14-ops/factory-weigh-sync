@@ -11,6 +11,7 @@ import { useWifiScale } from "@/hooks/useWifiScale";
 
 interface WeighingStationProps {
   operatorName: string;
+  productType: string;
   machineName: string;
   onEndShift: () => void;
 }
@@ -19,10 +20,11 @@ interface WeightRecord {
   timestamp: string;
   machineName: string;
   operatorName: string;
+  productType: string;
   weight: number;
 }
 
-export const WeighingStation = ({ operatorName, machineName, onEndShift }: WeighingStationProps) => {
+export const WeighingStation = ({ operatorName, productType, machineName, onEndShift }: WeighingStationProps) => {
   const [activeConnection, setActiveConnection] = useState<ConnectionType>("bluetooth");
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [queuedRecords, setQueuedRecords] = useState<WeightRecord[]>([]);
@@ -54,6 +56,7 @@ export const WeighingStation = ({ operatorName, machineName, onEndShift }: Weigh
             timestamp: new Date().toISOString(),
             machineName,
             operatorName,
+            productType,
             action
           })
         }
@@ -140,6 +143,7 @@ export const WeighingStation = ({ operatorName, machineName, onEndShift }: Weigh
       timestamp: new Date().toISOString(),
       machineName,
       operatorName,
+      productType,
       weight: currentWeight,
     };
 
@@ -244,6 +248,9 @@ export const WeighingStation = ({ operatorName, machineName, onEndShift }: Weigh
               <h1 className="text-3xl font-bold text-foreground mb-2">{machineName}</h1>
               <p className="text-lg text-muted-foreground">
                 Operator: <span className="font-semibold text-foreground">{operatorName}</span>
+              </p>
+              <p className="text-lg text-muted-foreground">
+                Product: <span className="font-semibold text-foreground">{productType}</span>
               </p>
             </div>
             

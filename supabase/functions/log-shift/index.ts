@@ -9,6 +9,7 @@ interface ShiftEvent {
   timestamp: string;
   machineName: string;
   operatorName: string;
+  productType: string;
   action: 'start' | 'end';
 }
 
@@ -21,7 +22,7 @@ serve(async (req) => {
   try {
     const shiftEvent = await req.json() as ShiftEvent;
 
-    if (!shiftEvent.operatorName || !shiftEvent.machineName || !shiftEvent.action) {
+    if (!shiftEvent.operatorName || !shiftEvent.machineName || !shiftEvent.productType || !shiftEvent.action) {
       throw new Error('Invalid shift event data');
     }
 
@@ -45,11 +46,12 @@ serve(async (req) => {
       new Date(shiftEvent.timestamp).toLocaleString(),
       shiftEvent.machineName,
       shiftEvent.operatorName,
+      shiftEvent.productType,
       shiftEvent.action.toUpperCase()
     ]];
 
     // Append to Google Sheets Shifts tab
-    const appendUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Shifts!A:D:append?valueInputOption=RAW`;
+    const appendUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Shifts!A:E:append?valueInputOption=RAW`;
     
     const response = await fetch(appendUrl, {
       method: 'POST',

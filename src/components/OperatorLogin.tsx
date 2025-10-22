@@ -5,16 +5,17 @@ import { Label } from "@/components/ui/label";
 import { Scale } from "lucide-react";
 
 interface OperatorLoginProps {
-  onStartShift: (operatorName: string) => void;
+  onStartShift: (operatorName: string, productType: string) => void;
 }
 
 export const OperatorLogin = ({ onStartShift }: OperatorLoginProps) => {
   const [name, setName] = useState("");
+  const [productType, setProductType] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (name.trim()) {
-      onStartShift(name.trim());
+    if (name.trim() && productType.trim()) {
+      onStartShift(name.trim(), productType.trim());
     }
   };
 
@@ -50,11 +51,26 @@ export const OperatorLogin = ({ onStartShift }: OperatorLoginProps) => {
             />
           </div>
 
+          <div className="space-y-2">
+            <Label htmlFor="product-type" className="text-lg font-semibold">
+              Product Type
+            </Label>
+            <Input
+              id="product-type"
+              type="text"
+              placeholder="Enter product type"
+              value={productType}
+              onChange={(e) => setProductType(e.target.value)}
+              className="h-16 text-xl"
+              required
+            />
+          </div>
+
           <Button
             type="submit"
             size="lg"
             className="w-full h-20 text-2xl font-bold"
-            disabled={!name.trim()}
+            disabled={!name.trim() || !productType.trim()}
           >
             Start Shift
           </Button>
