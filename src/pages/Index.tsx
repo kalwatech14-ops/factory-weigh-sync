@@ -5,7 +5,7 @@ import { WeighingStation } from "@/components/WeighingStation";
 const Index = () => {
   const [operatorName, setOperatorName] = useState<string | null>(null);
   const [productType, setProductType] = useState<string | null>(null);
-  const machineName = "SCALE 1"; // This could be configured per tablet
+  const machineName = "SCALE A"; // This could be configured per tablet
 
   const handleStartShift = (name: string, product: string) => {
     localStorage.setItem("operatorName", name);

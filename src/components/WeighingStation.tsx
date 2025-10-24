@@ -273,8 +273,8 @@ export const WeighingStation = ({ operatorName, productType, machineName, onEndS
                 className="gap-2"
               >
                 <LogOut className="w-5 h-5" />
-                End Shift
-              </Button>
+                End 
+                              </Button>
             </div>
           </div>
         </div>
