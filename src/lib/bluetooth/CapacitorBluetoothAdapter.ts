@@ -5,9 +5,9 @@ export class CapacitorBluetoothAdapter implements BluetoothAdapter {
   private deviceId: string | null = null;
   private weightCallback: ((weight: number) => void) | null = null;
 
-  // Replace these with your actual scale's UUIDs
-  private readonly SERVICE_UUID = "00001234-0000-1000-8000-00805f9b34fb";
-  private readonly WEIGHT_CHARACTERISTIC_UUID = "00005678-0000-1000-8000-00805f9b34fb";
+  // Standard Bluetooth Weight Scale Service UUIDs (Bluetooth SIG specification)
+  private readonly SERVICE_UUID = "0000181d-0000-1000-8000-00805f9b34fb";
+  private readonly WEIGHT_CHARACTERISTIC_UUID = "00002a9d-0000-1000-8000-00805f9b34fb";
 
   async isAvailable(): Promise<boolean> {
     try {
@@ -70,8 +70,12 @@ export class CapacitorBluetoothAdapter implements BluetoothAdapter {
       this.WEIGHT_CHARACTERISTIC_UUID,
       (value) => {
         if (this.weightCallback) {
-          // Parse weight data from DataView (format depends on your scale)
-          const weightValue = value.getFloat32(0, true);
+          // Parse weight data according to Bluetooth Weight Scale specification
+          // Byte 0: Flags
+          // Bytes 1-2: Weight value (uint16, little endian)
+          const flags = value.getUint8(0);
+          const unit = flags & 0x01; // 0 = SI (kg), 1 = Imperial (lb)
+          const weightValue = value.getUint16(1, true) / (unit === 0 ? 200 : 100); // kg or lb
           this.weightCallback(weightValue);
         }
       }

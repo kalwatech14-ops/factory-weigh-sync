@@ -12,8 +12,10 @@ export class WebBluetoothAdapter implements BluetoothAdapter {
 
   async requestDevice(): Promise<BluetoothDeviceInfo> {
     const device = await navigator.bluetooth.requestDevice({
-      acceptAllDevices: true,
-      optionalServices: ['battery_service', 'device_information']
+      filters: [
+        { services: ['0000181d-0000-1000-8000-00805f9b34fb'] } // Weight Scale Service
+      ],
+      optionalServices: ['battery_service', 'device_information', '0000181d-0000-1000-8000-00805f9b34fb']
     });
 
     this.device = device;
@@ -55,10 +57,9 @@ export class WebBluetoothAdapter implements BluetoothAdapter {
     this.weightCallback = callback;
 
     try {
-      // Try to get weight characteristic
-      // Replace these UUIDs with your actual scale's service and characteristic UUIDs
-      const service = await this.device.gatt.getPrimaryService("00001234-0000-1000-8000-00805f9b34fb");
-      const char = await service.getCharacteristic("00005678-0000-1000-8000-00805f9b34fb");
+      // Standard Bluetooth Weight Scale Service UUIDs (Bluetooth SIG specification)
+      const service = await this.device.gatt.getPrimaryService("0000181d-0000-1000-8000-00805f9b34fb");
+      const char = await service.getCharacteristic("00002a9d-0000-1000-8000-00805f9b34fb");
       
       this.characteristic = char;
       
@@ -76,8 +77,12 @@ export class WebBluetoothAdapter implements BluetoothAdapter {
     const target = event.target as BluetoothRemoteGATTCharacteristic;
     const value = target.value;
     if (value && this.weightCallback) {
-      // Parse weight data (format depends on your scale)
-      const weightValue = value.getFloat32(0, true);
+      // Parse weight data according to Bluetooth Weight Scale specification
+      // Byte 0: Flags
+      // Bytes 1-2: Weight value (uint16, little endian)
+      const flags = value.getUint8(0);
+      const unit = flags & 0x01; // 0 = SI (kg), 1 = Imperial (lb)
+      const weightValue = value.getUint16(1, true) / (unit === 0 ? 200 : 100); // kg or lb
       this.weightCallback(weightValue);
     }
   }
