@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { ConnectionStatus, ConnectionType, ConnectionState } from "./ConnectionStatus";
 import { WeightDisplay } from "./WeightDisplay";
 import { WifiConfigDialog } from "./WifiConfigDialog";
+import { BluetoothGuideDialog } from "./BluetoothGuideDialog";
 import { LogOut, Save, Wifi } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useBluetoothScale } from "@/hooks/useBluetoothScale";
@@ -29,6 +30,7 @@ export const WeighingStation = ({ operatorName, productType, machineName, onEndS
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [queuedRecords, setQueuedRecords] = useState<WeightRecord[]>([]);
   const [showWifiConfig, setShowWifiConfig] = useState(false);
+  const [showBluetoothGuide, setShowBluetoothGuide] = useState(false);
   const { toast } = useToast();
   
   const bluetooth = useBluetoothScale();
@@ -195,25 +197,30 @@ export const WeighingStation = ({ operatorName, productType, machineName, onEndS
   const handleConnectionSwitch = async (type: ConnectionType) => {
     if (type === "bluetooth") {
       setActiveConnection(type);
-      try {
-        await bluetooth.connect();
-      } catch (error: any) {
-        // Only auto-switch if error is not user cancellation
-        if (error?.message?.includes("cancelled") || error?.message?.includes("canceled")) {
-          return; // User cancelled, don't switch to Wi-Fi
-        }
-        
-        toast({
-          title: "Bluetooth unavailable",
-          description: "Please configure Wi-Fi connection",
-          variant: "default",
-        });
-        setActiveConnection("wifi");
-        setShowWifiConfig(true);
-      }
+      // Show guide dialog first
+      setShowBluetoothGuide(true);
     } else {
       // For Wi-Fi, show configuration dialog
       bluetooth.disconnect();
+      setActiveConnection("wifi");
+      setShowWifiConfig(true);
+    }
+  };
+
+  const handleBluetoothConnect = async () => {
+    try {
+      await bluetooth.connect();
+    } catch (error: any) {
+      // Only auto-switch if error is not user cancellation
+      if (error?.message?.includes("cancelled") || error?.message?.includes("canceled")) {
+        return; // User cancelled, don't switch to Wi-Fi
+      }
+      
+      toast({
+        title: "Bluetooth unavailable",
+        description: "Please configure Wi-Fi connection",
+        variant: "default",
+      });
       setActiveConnection("wifi");
       setShowWifiConfig(true);
     }
@@ -233,6 +240,12 @@ export const WeighingStation = ({ operatorName, productType, machineName, onEndS
 
   return (
     <>
+      <BluetoothGuideDialog
+        open={showBluetoothGuide}
+        onOpenChange={setShowBluetoothGuide}
+        onConnect={handleBluetoothConnect}
+      />
+      
       <WifiConfigDialog
         open={showWifiConfig}
         onOpenChange={setShowWifiConfig}
